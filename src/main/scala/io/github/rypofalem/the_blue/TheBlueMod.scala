@@ -1,13 +1,12 @@
 package io.github.rypofalem.the_blue
 
-import java.util.function.Supplier
 
 import io.github.rypofalem.the_blue.blocks.tiles.{FishingNetBlock, FishingNetTile}
 import net.fabricmc.api.{ClientModInitializer, ModInitializer}
 import net.fabricmc.fabric.api.block.FabricBlockSettings
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap
 import net.fabricmc.fabric.api.client.itemgroup.FabricItemGroupBuilder
-import net.minecraft.block.{Block, Blocks, Material}
+import net.minecraft.block.{Block, Material}
 import net.minecraft.block.entity.{BlockEntity, BlockEntityType}
 import net.minecraft.client.render.RenderLayer
 import net.minecraft.item.{BlockItem, Item, ItemGroup, ItemStack}

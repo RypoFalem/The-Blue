@@ -27,7 +27,6 @@ import net.minecraft.world.{BlockView, IWorld, World}
 
 import scala.jdk.CollectionConverters._
 
-// TODO drop block when broken
 class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
   with Tickable with SimpleInventory with SidedInventory {
 
