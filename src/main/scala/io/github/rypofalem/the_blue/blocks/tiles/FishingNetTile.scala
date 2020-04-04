@@ -1,4 +1,4 @@
-package io.github.rypofalem.the_blue.tiles
+package io.github.rypofalem.the_blue.blocks.tiles
 
 import java.util.Random
 
@@ -6,6 +6,7 @@ import io.github.rypofalem.the_blue.TheBlueMod
 import io.github.rypofalem.the_blue.inventory.SimpleInventory
 import net.minecraft.block.{Block, BlockEntityProvider, BlockState, Waterloggable}
 import net.minecraft.block.entity.BlockEntity
+import net.minecraft.client.util.math.Vector3d
 import net.minecraft.entity.{EntityContext, ExperienceOrbEntity, ItemEntity}
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.fluid.{FluidState, Fluids}
@@ -148,23 +149,29 @@ class FishingNetBlock(settings:Block.Settings) extends Block(settings) with Bloc
     // go through the net's inventory and drop all items and xp for the player
     val net = world.getBlockEntity(pos).asInstanceOf[FishingNetTile]
     var lootCount:Int = 0
-    val playerCenter = player.getPos.add(player.getWidth/2, player.getHeight/2, player.getWidth/2)
-    for{slot <- 0 until net.getInvSize} {
-      val item = net.getInvStack(slot)
-      if(!item.isEmpty){
+
+    // a location in the center of the hit side, .2 blocks extended outwards
+    val dropLocation:Vector3d = {
+      val side = hit.getSide
+      def offset(d:Double):Double = d * 0.7 + .5
+      new Vector3d(offset(side.getOffsetX) + pos.getX,
+        offset(side.getOffsetY) + pos.getY,
+        offset(side.getOffsetZ) + pos.getZ)
+    }
+    for{
+      slot <- 0 until net.getInvSize
+      item = net.getInvStack(slot)
+      if !item.isEmpty
+    } {
         net.setInvStack(slot, ItemStack.EMPTY)
         lootCount += 1
-        val worldItem = new ItemEntity(world, playerCenter.x, playerCenter.y, playerCenter.z, item)
+        val worldItem = new ItemEntity(world, dropLocation.x, dropLocation.y, dropLocation.z, item)
         worldItem.setPickupDelay(0)
         world.spawnEntity(worldItem)
-      }
     }
 
-    if(lootCount > 0) {
-      // drop one large exp orb with 3-30 xp
-      //world.spawnEntity(new ExperienceOrbEntity(world, playerCenter.x, playerCenter.y, playerCenter.z, lootCount*3))
-      dropExperience(world, pos, lootCount*3)
-    } else net.timerPunishment(20*60) // add 1 minute to the timer if the player checked an empty net
+    if(lootCount > 0) dropExperience(world, pos, lootCount*3)
+     else net.timerPunishment(20*60) // add 1 minute to the timer if the player checked an empty net
 
     ActionResult.SUCCESS
   }

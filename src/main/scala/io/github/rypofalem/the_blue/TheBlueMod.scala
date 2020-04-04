@@ -1,6 +1,6 @@
 package io.github.rypofalem.the_blue
 
-import io.github.rypofalem.the_blue.tiles.{FishingNetBlock, FishingNetTile}
+import io.github.rypofalem.the_blue.blocks.tiles.{FishingNetBlock, FishingNetTile}
 import net.fabricmc.api.{ClientModInitializer, ModInitializer}
 import net.fabricmc.fabric.api.block.FabricBlockSettings
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap
