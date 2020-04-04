@@ -1,29 +1,37 @@
 package io.github.rypofalem.the_blue
 
+import java.util.function.Supplier
+
 import io.github.rypofalem.the_blue.blocks.tiles.{FishingNetBlock, FishingNetTile}
 import net.fabricmc.api.{ClientModInitializer, ModInitializer}
 import net.fabricmc.fabric.api.block.FabricBlockSettings
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap
-import net.minecraft.block.{Block, Material}
+import net.fabricmc.fabric.api.client.itemgroup.FabricItemGroupBuilder
+import net.minecraft.block.{Block, Blocks, Material}
 import net.minecraft.block.entity.{BlockEntity, BlockEntityType}
 import net.minecraft.client.render.RenderLayer
-import net.minecraft.item.{BlockItem, Item, ItemGroup}
+import net.minecraft.item.{BlockItem, Item, ItemGroup, ItemStack}
 import net.minecraft.sound.BlockSoundGroup
 import net.minecraft.util.Identifier
 import net.minecraft.util.registry.Registry
 
-// todo translation
 // todo dolphin saddle
 object TheBlueMod extends ModInitializer with ClientModInitializer{
 
   val modid:String = "the_blue"
-  val fishingNetBlock:Block = new FishingNetBlock(FabricBlockSettings.of(Material.WOOL).nonOpaque().sounds(BlockSoundGroup.WOOL).build)
+  val itemGroup:ItemGroup = FabricItemGroupBuilder.build(
+    new Identifier(modid, "the_blue"), () => new ItemStack(fishingNetBlock))
+
+
+  val fishingNetBlock:Block =
+    new FishingNetBlock(FabricBlockSettings.of(Material.WOOL).nonOpaque().sounds(BlockSoundGroup.WOOL).build)
   val fishingNetTileType:BlockEntityType[FishingNetTile] =
     BlockEntityType.Builder.create(() => new FishingNetTile, fishingNetBlock).build(null)
+  val fishingNetItem:BlockItem = new BlockItem(fishingNetBlock, new Item.Settings().group(itemGroup))
 
   override def onInitialize(): Unit = {
     registerBlock("fishingnet", fishingNetBlock)
-    registerBlockItem("fishingnet", fishingNetBlock)
+    registerBlockItem("fishingnet", fishingNetItem)
     registerTile("fishingnet", fishingNetTileType)
   }
 
@@ -43,10 +51,7 @@ object TheBlueMod extends ModInitializer with ClientModInitializer{
       new Identifier(modid, name), fishingNetBlock)
   }
 
-  private def registerBlockItem(name:String, block:Block):Item = {
-    Registry.register(
-      Registry.ITEM,
-      new Identifier (modid, name),
-      new BlockItem (block, new Item.Settings().group(ItemGroup.MISC)))
+  private def registerBlockItem(name:String, blockItem: BlockItem):Item = {
+    Registry.register(Registry.ITEM, new Identifier (modid, name), blockItem)
   }
 }
