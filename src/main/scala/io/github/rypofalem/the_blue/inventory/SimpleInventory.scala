@@ -58,7 +58,7 @@ trait SimpleInventory extends Inventory {
 
   // computes a string listing all non-empty items with their amounts
   // example output: {(bow,1), (saddle,1), (lily_pad,1), (pufferfish,1), (cod,6)}
-  def inventoryToString():String = {
+  def inventoryToString:String = {
     val builder = new StringBuilder("{")
     val iterator = getItemCounts.iterator
     if(iterator.hasNext) builder.append(iterator.next().toString)

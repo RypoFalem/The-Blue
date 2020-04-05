@@ -1,7 +1,7 @@
 package io.github.rypofalem.the_blue
 
 
-import io.github.rypofalem.the_blue.blocks.tiles.{FishingNetBlock, FishingNetTile}
+import io.github.rypofalem.the_blue.blocks.tiles.{FishingNetBlock, FishingNetRenderer, FishingNetTile}
 import net.fabricmc.api.{ClientModInitializer, ModInitializer}
 import net.fabricmc.fabric.api.block.FabricBlockSettings
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap
@@ -36,6 +36,8 @@ object TheBlueMod extends ModInitializer with ClientModInitializer{
 
   override def onInitializeClient(): Unit = {
     BlockRenderLayerMap.INSTANCE.putBlock(fishingNetBlock, RenderLayer.getTranslucent)
+    import net.fabricmc.fabric.api.client.rendereregistry.v1.BlockEntityRendererRegistry
+    BlockEntityRendererRegistry.INSTANCE.register[FishingNetTile](fishingNetTileType, x => new FishingNetRenderer(x) )
   }
 
   private def registerTile[A<:BlockEntity](name:String, tileType:BlockEntityType[A] ): BlockEntityType[A] = {
