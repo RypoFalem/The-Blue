@@ -20,7 +20,7 @@
     "client": [
       {
         "adapter": "scala",
-        "value": "io.github.rypofalem.the_blue.TheBlueMod"
+        "value": "io.github.rypofalem.the_blue.TheBlueClient"
       }
     ]
   },

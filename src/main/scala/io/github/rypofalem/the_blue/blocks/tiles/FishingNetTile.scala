@@ -179,10 +179,10 @@ class FishingNetBlock(settings:Block.Settings) extends Block(settings) with Bloc
     var lootCount:Int = 0
 
     // a location in the center of the hit side, .2 blocks extended outwards
-    val dropLocation:Vector3d = {
+    val dropLocation:(Double, Double, Double) = {
       val side = hit.getSide
       def offset(d:Double):Double = d * 0.7 + .5
-      new Vector3d(offset(side.getOffsetX) + pos.getX,
+      (offset(side.getOffsetX) + pos.getX,
         offset(side.getOffsetY) + pos.getY,
         offset(side.getOffsetZ) + pos.getZ)
     }
@@ -193,7 +193,7 @@ class FishingNetBlock(settings:Block.Settings) extends Block(settings) with Bloc
     } {
         net.setInvStack(slot, ItemStack.EMPTY)
         lootCount += 1
-        val worldItem = new ItemEntity(world, dropLocation.x, dropLocation.y, dropLocation.z, item)
+        val worldItem = new ItemEntity(world, dropLocation._1, dropLocation._2, dropLocation._3, item)
         worldItem.setPickupDelay(0)
         world.spawnEntity(worldItem)
     }

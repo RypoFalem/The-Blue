@@ -1,11 +1,13 @@
 package io.github.rypofalem.the_blue
 
 
+import io.github.rypofalem.the_blue.TheBlueMod.{fishingNetBlock, fishingNetTileType}
 import io.github.rypofalem.the_blue.blocks.tiles.{FishingNetBlock, FishingNetItem, FishingNetRenderer, FishingNetTile}
 import net.fabricmc.api.{ClientModInitializer, ModInitializer}
 import net.fabricmc.fabric.api.block.FabricBlockSettings
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap
 import net.fabricmc.fabric.api.client.itemgroup.FabricItemGroupBuilder
+import net.fabricmc.fabric.api.client.rendereregistry.v1.BlockEntityRendererRegistry
 import net.minecraft.block.{Block, Material}
 import net.minecraft.block.entity.{BlockEntity, BlockEntityType}
 import net.minecraft.client.render.RenderLayer
@@ -15,7 +17,7 @@ import net.minecraft.util.Identifier
 import net.minecraft.util.registry.Registry
 
 // todo dolphin saddle
-object TheBlueMod extends ModInitializer with ClientModInitializer{
+object TheBlueMod extends ModInitializer{
 
   val modid:String = "the_blue"
   val itemGroup:ItemGroup = FabricItemGroupBuilder.build(
@@ -34,12 +36,6 @@ object TheBlueMod extends ModInitializer with ClientModInitializer{
     registerTile("fishingnet", fishingNetTileType)
   }
 
-  override def onInitializeClient(): Unit = {
-    BlockRenderLayerMap.INSTANCE.putBlock(fishingNetBlock, RenderLayer.getTranslucent)
-    import net.fabricmc.fabric.api.client.rendereregistry.v1.BlockEntityRendererRegistry
-    BlockEntityRendererRegistry.INSTANCE.register[FishingNetTile](fishingNetTileType, x => new FishingNetRenderer(x) )
-  }
-
   private def registerTile[A<:BlockEntity](name:String, tileType:BlockEntityType[A] ): BlockEntityType[A] = {
     Registry.register(
       Registry.BLOCK_ENTITY_TYPE,
@@ -54,5 +50,12 @@ object TheBlueMod extends ModInitializer with ClientModInitializer{
 
   private def registerBlockItem(name:String, blockItem: BlockItem):Item = {
     Registry.register(Registry.ITEM, new Identifier (modid, name), blockItem)
+  }
+}
+
+object TheBlueClient extends ClientModInitializer{
+  override def onInitializeClient(): Unit = {
+    BlockRenderLayerMap.INSTANCE.putBlock(fishingNetBlock, RenderLayer.getTranslucent)
+    BlockEntityRendererRegistry.INSTANCE.register[FishingNetTile](fishingNetTileType, x => new FishingNetRenderer(x) )
   }
 }
