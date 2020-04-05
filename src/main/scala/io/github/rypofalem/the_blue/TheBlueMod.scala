@@ -1,7 +1,7 @@
 package io.github.rypofalem.the_blue
 
 
-import io.github.rypofalem.the_blue.blocks.tiles.{FishingNetBlock, FishingNetRenderer, FishingNetTile}
+import io.github.rypofalem.the_blue.blocks.tiles.{FishingNetBlock, FishingNetItem, FishingNetRenderer, FishingNetTile}
 import net.fabricmc.api.{ClientModInitializer, ModInitializer}
 import net.fabricmc.fabric.api.block.FabricBlockSettings
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap
@@ -22,11 +22,11 @@ object TheBlueMod extends ModInitializer with ClientModInitializer{
     new Identifier(modid, "the_blue"), () => new ItemStack(fishingNetBlock))
 
 
-  val fishingNetBlock:Block =
+  val fishingNetBlock:FishingNetBlock =
     new FishingNetBlock(FabricBlockSettings.of(Material.WOOL).nonOpaque().sounds(BlockSoundGroup.WOOL).build)
   val fishingNetTileType:BlockEntityType[FishingNetTile] =
     BlockEntityType.Builder.create(() => new FishingNetTile, fishingNetBlock).build(null)
-  val fishingNetItem:BlockItem = new BlockItem(fishingNetBlock, new Item.Settings().group(itemGroup))
+  val fishingNetItem:BlockItem = new FishingNetItem(fishingNetBlock, new Item.Settings().group(itemGroup))
 
   override def onInitialize(): Unit = {
     registerBlock("fishingnet", fishingNetBlock)

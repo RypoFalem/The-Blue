@@ -8,21 +8,23 @@ import net.fabricmc.fabric.api.block.entity.BlockEntityClientSerializable
 import net.minecraft.block.{Block, BlockEntityProvider, BlockState, Waterloggable}
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.client.MinecraftClient
+import net.minecraft.client.item.TooltipContext
 import net.minecraft.client.render.VertexConsumerProvider
 import net.minecraft.client.render.block.entity.{BlockEntityRenderDispatcher, BlockEntityRenderer}
 import net.minecraft.client.render.model.json.ModelTransformation
 import net.minecraft.client.util.math.{MatrixStack, Vector3d, Vector3f}
-import net.minecraft.entity.{EntityContext, ExperienceOrbEntity, ItemEntity}
+import net.minecraft.entity.{EntityContext, ItemEntity, LivingEntity}
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.fluid.{FluidState, Fluids}
 import net.minecraft.inventory.SidedInventory
-import net.minecraft.item.{ItemPlacementContext, ItemStack, Items}
+import net.minecraft.item.{BlockItem, Item, ItemPlacementContext, ItemStack, Items}
 import net.minecraft.loot.LootTables
 import net.minecraft.loot.context.{LootContext, LootContextParameters, LootContextTypes}
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.state.StateManager
 import net.minecraft.state.property.{BooleanProperty, Properties}
+import net.minecraft.text.{Text, TranslatableText}
 import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.{ActionResult, Hand, Tickable}
 import net.minecraft.util.math.{BlockPos, Direction}
@@ -49,7 +51,7 @@ class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
 
   protected def calcTicksTilNextFish:Int = calcTicksTilNextFish(getWorld.random)
   protected def calcTicksTilNextFish(rand:Random):Int =
-    20 * 30 //TODO debug minWaitTime + rand.nextInt(maxWaitTime-minWaitTime) + 1 - timeBonus
+    minWaitTime + rand.nextInt(maxWaitTime-minWaitTime) + 1 - timeBonus
   protected def timeBonus:Int = (60 * 20 * luck).toInt // one minute of ticks per unit of luck
 
   override def tick(): Unit = {
@@ -57,7 +59,7 @@ class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
     markDirty() // we mark dirty on every tick because the countdown changes every tick
     ticksTilNextFish -= 1 // countdown
     // TODO: detect if it's raining at the block position at the top of the water?
-    if(world.isRaining) ticksTilNextFish -= 4 // catch fish 5 times as fast in rain!
+    if(world.isRaining) ticksTilNextFish -= 99 // catch fish 100 times as fast in rain!
     if(ticksTilNextFish > 0) return // do nothing if countdown not ready
     catchFish() // try to catch a fish
     resetFishingTimer() // reset timer
@@ -83,6 +85,10 @@ class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
 
   // reset the timers of nets that are too close as punishment
   protected[the_blue] def resetNearbyNetTimers():Unit = {
+    closeNets foreach (_.timerPunishment(20*60*5)) // 5 minutes
+  }
+
+  protected[the_blue] def closeNets:Seq[FishingNetTile] = {
     val chunkX = pos.getX >> 4
     val chunkZ = pos.getZ >> 4
     for{
@@ -95,8 +101,7 @@ class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
       if tile.isInstanceOf[FishingNetTile] &&
         tile != this &&
         tile.getPos.getManhattanDistance(this.getPos) < resetDistance
-      tooCloseNet = tile.asInstanceOf[FishingNetTile]
-    } tooCloseNet.timerPunishment(20*60*5) // 5 minutes
+    } yield tile.asInstanceOf[FishingNetTile]
   }
 
   // punish the player by extending the timer
@@ -197,7 +202,10 @@ class FishingNetBlock(settings:Block.Settings) extends Block(settings) with Bloc
       net.sync()
       dropExperience(world, pos, lootCount*3)
     }
-    else net.timerPunishment(20*60) // add 1 minute to the timer if the player checked an empty net
+    else {
+      player.sendMessage(new TranslatableText("block.the_blue.fishingnet.scare_fish"))
+      net.timerPunishment(20*15) // add 15 seconds to the timer if the player checked an empty net
+    }
 
     net.filledSlots = 0
 
@@ -213,8 +221,17 @@ class FishingNetBlock(settings:Block.Settings) extends Block(settings) with Bloc
     if (state.get(FishingNetBlock.WATERLOGGED)) Fluids.WATER.getStill(false)
     else super.getFluidState(state)
 
-  override def onBlockAdded(state: BlockState, world: World, pos: BlockPos, oldState: BlockState, moved: Boolean): Unit =
-    if (!world.isClient) world.getBlockTickScheduler.schedule(pos, this, 1)
+//  override def onBlockAdded(state: BlockState, world: World, pos: BlockPos, oldState: BlockState, moved: Boolean): Unit = {
+//    if (!world.isClient) world.getBlockTickScheduler.schedule(pos, this, 1)
+//  }
+
+  override def onPlaced(world: World, pos: BlockPos, state: BlockState, placer: LivingEntity, itemStack: ItemStack): Unit = {
+    super.onPlaced(world, pos, state, placer, itemStack)
+    if(!world.isClient &&
+      world.getBlockEntity(pos).asInstanceOf[FishingNetTile].closeNets.nonEmpty &&
+      placer.isInstanceOf[PlayerEntity]
+    ) placer.asInstanceOf[PlayerEntity].sendMessage(new TranslatableText("block.the_blue.fishingnet.too_close"))
+  }
 
   override def getOutlineShape(state: BlockState, view: BlockView, pos: BlockPos, context: EntityContext): VoxelShape =
     FishingNetBlock.SHAPE
@@ -252,7 +269,6 @@ class FishingNetRenderer(dispatcher:BlockEntityRenderDispatcher)
     val itemCount = net.filledSlots
     val separationRadians = fullCircle / itemCount // how many radians apart items are
 
-
     for(i <- 0 until itemCount){
       val stack = net.getInvStack(i)
       val rotation = separationRadians * i +
@@ -269,5 +285,16 @@ class FishingNetRenderer(dispatcher:BlockEntityRenderDispatcher)
         renderItem(stack, ModelTransformation.Mode.GROUND, light, overlay, matrices, vertexConsumers)
       matrices.pop()
     }
+  }
+}
+
+class FishingNetItem(block:FishingNetBlock, settings:Item.Settings) extends BlockItem(block, settings){
+  override def appendTooltip(itemStack: ItemStack, world: World, tooltip: java.util.List[Text], tooltipContext: TooltipContext): Unit = {
+    tooltip.add(new TranslatableText("item.the_blue.fishingnet.tip1"))
+    tooltip.add(new TranslatableText("item.the_blue.fishingnet.tip2"))
+    tooltip.add(new TranslatableText("item.the_blue.fishingnet.tip3"))
+    tooltip.add(new TranslatableText("item.the_blue.fishingnet.tip4"))
+    tooltip.add(new TranslatableText("item.the_blue.fishingnet.tip5"))
+    tooltip.add(new TranslatableText("item.the_blue.fishingnet.tip6"))
   }
 }

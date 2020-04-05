@@ -1,5 +1,13 @@
 {
   "item.the_blue.fishingnet": "Fishing Net",
+  "item.the_blue.fishingnet.tip1": "Catches fishing loot passively!",
+  "item.the_blue.fishingnet.tip2": "You can see the loot inside!",
+  "item.the_blue.fishingnet.tip3": "Place in full water block!",
+  "item.the_blue.fishingnet.tip4": "Don't place nets too close!",
+  "item.the_blue.fishingnet.tip5": "Excessive net checking scares fish away!",
+  "item.the_blue.fishingnet.tip6": "100x as fast while raining!",
   "block.the_blue.fishingnet": "Fishing Net",
+  "block.the_blue.fishingnet.too_close": "Placing a net close to another net is a waste. Nets need to be placed further apart to get the most out of them!",
+  "block.the_blue.fishingnet.scare_fish": "Checking the net excessively scares the fish away! Only activate the net when you see items inside.",
   "itemGroup.the_blue.the_blue": "The Blue"
 }
