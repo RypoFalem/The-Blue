@@ -49,12 +49,15 @@ class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
 
   protected def calcTicksTilNextFish:Int = calcTicksTilNextFish(getWorld.random)
   protected def calcTicksTilNextFish(rand:Random):Int =
-    20 //TODO debug minWaitTime + rand.nextInt(maxWaitTime-minWaitTime) + 1 - timeBonus
+    20 * 30 //TODO debug minWaitTime + rand.nextInt(maxWaitTime-minWaitTime) + 1 - timeBonus
   protected def timeBonus:Int = (60 * 20 * luck).toInt // one minute of ticks per unit of luck
 
   override def tick(): Unit = {
+    if(world.isClient) return
     markDirty() // we mark dirty on every tick because the countdown changes every tick
     ticksTilNextFish -= 1 // countdown
+    // TODO: detect if it's raining at the block position at the top of the water?
+    if(world.isRaining) ticksTilNextFish -= 4 // catch fish 5 times as fast in rain!
     if(ticksTilNextFish > 0) return // do nothing if countdown not ready
     catchFish() // try to catch a fish
     resetFishingTimer() // reset timer
