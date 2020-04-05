@@ -4,9 +4,14 @@ import java.util.Random
 
 import io.github.rypofalem.the_blue.TheBlueMod
 import io.github.rypofalem.the_blue.inventory.SimpleInventory
+import net.fabricmc.fabric.api.block.entity.BlockEntityClientSerializable
 import net.minecraft.block.{Block, BlockEntityProvider, BlockState, Waterloggable}
 import net.minecraft.block.entity.BlockEntity
-import net.minecraft.client.util.math.Vector3d
+import net.minecraft.client.MinecraftClient
+import net.minecraft.client.render.VertexConsumerProvider
+import net.minecraft.client.render.block.entity.{BlockEntityRenderDispatcher, BlockEntityRenderer}
+import net.minecraft.client.render.model.json.ModelTransformation
+import net.minecraft.client.util.math.{MatrixStack, Vector3d, Vector3f}
 import net.minecraft.entity.{EntityContext, ExperienceOrbEntity, ItemEntity}
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.fluid.{FluidState, Fluids}
@@ -28,7 +33,7 @@ import net.minecraft.world.{BlockView, IWorld, World}
 import scala.jdk.CollectionConverters._
 
 class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
-  with Tickable with SimpleInventory with SidedInventory {
+  with Tickable with SimpleInventory with SidedInventory with BlockEntityClientSerializable{
 
   // Time in ticks between fish catching
   // Assumption: minWaitTime < maxWaitTime, this is never enforced
@@ -37,12 +42,14 @@ class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
 
   override def getInvSize:Int = 10
   val resetDistance:Int = 15 // must be in range {0 < resetDistance < 16} for resetNearbyTimers
-  protected var ticksTilNextFish:Int = calcTicksTilNextFish(new Random())
+  protected[the_blue] var ticksTilNextFish:Int = calcTicksTilNextFish(new Random())
   protected var luck:Float = 0
+  // keep track of the number of slots filled so we don't have to loop through inventory on client render thread
+  protected[the_blue] var filledSlots:Int = 0
 
   protected def calcTicksTilNextFish:Int = calcTicksTilNextFish(getWorld.random)
   protected def calcTicksTilNextFish(rand:Random):Int =
-    1 //TODO debug minWaitTime + rand.nextInt(maxWaitTime-minWaitTime) + 1 - timeBonus
+    20 //TODO debug minWaitTime + rand.nextInt(maxWaitTime-minWaitTime) + 1 - timeBonus
   protected def timeBonus:Int = (60 * 20 * luck).toInt // one minute of ticks per unit of luck
 
   override def tick(): Unit = {
@@ -62,7 +69,13 @@ class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
     for{
       // find the first empty Item index, which is Int component of the tuple
       emptyItem:(ItemStack, Int) <- items.zipWithIndex.find{ case (stack, _) => stack.isEmpty }
-    } items(emptyItem._2) =  getRandomFishingLoot
+      loot = getRandomFishingLoot
+      if !loot.isEmpty
+    } {
+      items(emptyItem._2) = loot
+      filledSlots += 1
+      sync()
+    }
   }
 
   // reset the timers of nets that are too close as punishment
@@ -115,6 +128,7 @@ class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
     super.toTag(tag)
     tag.putFloat("luck", luck)
     tag.putInt("ticksTilNextFish", ticksTilNextFish)
+    tag.putInt("filledSlots", filledSlots)
     SimpleInventory.toTag(tag, items, setIfEmpty = true)
     tag
   }
@@ -123,8 +137,15 @@ class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
     super.fromTag(tag)
     luck = tag.getFloat("luck")
     ticksTilNextFish = tag.getInt("ticksTilNextFish")
+    filledSlots = tag.getInt("filledSlots")
     SimpleInventory.fromTag(tag, items)
   }
+
+  // sync server -> clients todo: maybe not all tags need to be synced
+  override def fromClientTag(tag: CompoundTag): Unit = fromTag(tag)
+  override def toClientTag(tag: CompoundTag): CompoundTag = toTag(tag)
+
+  def getFilledSlots:Int = filledSlots
 
   // restrict inputting and outputting items from all sides
   override def getInvAvailableSlots(side: Direction): Array[Int] = Array.empty[Int]
@@ -169,8 +190,13 @@ class FishingNetBlock(settings:Block.Settings) extends Block(settings) with Bloc
         world.spawnEntity(worldItem)
     }
 
-    if(lootCount > 0) dropExperience(world, pos, lootCount*3)
-     else net.timerPunishment(20*60) // add 1 minute to the timer if the player checked an empty net
+    if(lootCount > 0){
+      net.sync()
+      dropExperience(world, pos, lootCount*3)
+    }
+    else net.timerPunishment(20*60) // add 1 minute to the timer if the player checked an empty net
+
+    net.filledSlots = 0
 
     ActionResult.SUCCESS
   }
@@ -209,4 +235,36 @@ class FishingNetBlock(settings:Block.Settings) extends Block(settings) with Bloc
 object FishingNetBlock{
   val WATERLOGGED:BooleanProperty = Properties.WATERLOGGED
   val SHAPE:VoxelShape = Block.createCuboidShape(1.0D, 0.0D, 1.0D, 15.0D, 14.0D, 15.0D)
+}
+
+class FishingNetRenderer(dispatcher:BlockEntityRenderDispatcher)
+  extends BlockEntityRenderer[FishingNetTile](dispatcher){
+  val fullCircle:Float = 2f * math.Pi.toFloat
+  val quarterCircle:Float = math.Pi.toFloat / 2f
+  val radius:Float = 4f / 16f // 4 pixels
+
+  override def render(net: FishingNetTile, tickDelta: Float, matrices: MatrixStack,
+                      vertexConsumers: VertexConsumerProvider, light: Int, overlay: Int): Unit = {
+    val time:Float = net.getWorld.getTime + tickDelta
+    val itemCount = net.filledSlots
+    val separationRadians = fullCircle / itemCount // how many radians apart items are
+
+
+    for(i <- 0 until itemCount){
+      val stack = net.getInvStack(i)
+      val rotation = separationRadians * i +
+        time / 15
+      matrices.push()
+      // move to center of block and then outward in a circle
+      matrices.translate(
+        radius*math.sin(rotation) + .5f,
+        .3f, // items are tall
+        radius*math.cos(rotation) + .5f)
+      // rotate to match it's position, then an extra quarter circle so that it's edge points to the center
+      matrices.multiply(Vector3f.POSITIVE_Y.getRadialQuaternion(rotation + quarterCircle) )
+      MinecraftClient.getInstance.getItemRenderer.
+        renderItem(stack, ModelTransformation.Mode.GROUND, light, overlay, matrices, vertexConsumers)
+      matrices.pop()
+    }
+  }
 }
