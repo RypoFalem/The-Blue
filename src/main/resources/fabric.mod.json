@@ -5,8 +5,17 @@
 
   "name": "TheBlue",
   "description": "Ocean themed additions. Made for a Spring 2020 Mod Fest.",
+  "authors": [
+    {
+      "name": "RypoFalem"
+    }
+  ],
+  "contact": {
+    "sources": "https://github.com/RypoFalem/The-Blue",
+    "issues": "https://github.com/RypoFalem/The-Blue/issues"
+  },
 
-  "license": "none yet :)",
+  "license": "GPL3",
   "icon": "assets/the_blue/icon.png",
 
   "environment": "*",
