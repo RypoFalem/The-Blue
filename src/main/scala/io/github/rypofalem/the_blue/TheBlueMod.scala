@@ -29,11 +29,13 @@ object TheBlueMod extends ModInitializer{
   val fishingNetTileType:BlockEntityType[FishingNetTile] =
     BlockEntityType.Builder.create(() => new FishingNetTile, fishingNetBlock).build(null)
   val fishingNetItem:BlockItem = new FishingNetItem(fishingNetBlock, new Item.Settings().group(itemGroup))
+  val kelpStringItem:Item = new Item( new Item.Settings().group(itemGroup))
 
   override def onInitialize(): Unit = {
     registerBlock("fishingnet", fishingNetBlock)
-    registerBlockItem("fishingnet", fishingNetItem)
+    registerItem("fishingnet", fishingNetItem)
     registerTile("fishingnet", fishingNetTileType)
+    registerItem("kelp_string", kelpStringItem)
   }
 
   private def registerTile[A<:BlockEntity](name:String, tileType:BlockEntityType[A] ): BlockEntityType[A] = {
@@ -48,8 +50,8 @@ object TheBlueMod extends ModInitializer{
       new Identifier(modid, name), fishingNetBlock)
   }
 
-  private def registerBlockItem(name:String, blockItem: BlockItem):Item = {
-    Registry.register(Registry.ITEM, new Identifier (modid, name), blockItem)
+  private def registerItem(name:String, item: Item):Item = {
+    Registry.register(Registry.ITEM, new Identifier (modid, name), item)
   }
 }
 

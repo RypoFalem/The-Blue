@@ -9,5 +9,6 @@
   "block.the_blue.fishingnet": "Fishing Net",
   "block.the_blue.fishingnet.too_close": "Placing a net close to another net is a waste. Nets need to be placed further apart to get the most out of them!",
   "block.the_blue.fishingnet.scare_fish": "Checking the net excessively scares the fish away! Only activate the net when you see items inside.",
-  "itemGroup.the_blue.the_blue": "The Blue"
+  "itemGroup.the_blue.the_blue": "The Blue",
+  "item.the_blue.kelp_string": "Kelp String"
 }
