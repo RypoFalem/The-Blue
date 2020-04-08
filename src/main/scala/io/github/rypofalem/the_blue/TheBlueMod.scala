@@ -37,8 +37,8 @@ object TheBlueMod extends ModInitializer {
   val kelpStringItem: Item = new Item(new Item.Settings().group(itemGroup))
 
   val merfolkType: EntityType[Merfolk] = FabricEntityTypeBuilder.
-    create[Merfolk](EntityCategory.CREATURE, (t: EntityType[Merfolk], w: World) => new Merfolk(t, w)).
-    size(EntityDimensions.fixed(.625f, 1.5f)).
+    create[Merfolk](EntityCategory.WATER_CREATURE, (t: EntityType[Merfolk], w: World) => new Merfolk(t, w)).
+    size(EntityDimensions.fixed(.625f, 1.875f)).
     build()
 
   override def onInitialize(): Unit = {
