@@ -185,7 +185,7 @@ class FishingNetBlock(settings: Block.Settings) extends Block(settings) with Blo
     var lootCount: Int = 0
 
     // a location in the center of the hit side, .2 blocks extended outwards
-    val dropLocation: (Double, Double, Double) = {
+    lazy val dropLocation: (Double, Double, Double) = {
       val side = hit.getSide
 
       def offset(d: Double): Double = d * 0.7 + .5
