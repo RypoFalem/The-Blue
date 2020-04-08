@@ -76,7 +76,7 @@ class MerfolkModel[T<:Entity] extends EntityModel[T]{
   override def setAngles(entity: T, limbAngle: Float, limbDistance: Float, customAngle: Float, headYaw: Float, headPitch: Float): Unit = {
     headbone.yaw = headYaw
     headbone.pitch = headPitch
-    tailbone.pitch = -0.1F * MathHelper.cos(customAngle * 0.3F);
+    tailbone.pitch = -0.1F * MathHelper.cos(customAngle * 0.3F)
     finbone.pitch =  -0.2F * MathHelper.cos(customAngle * 0.3F)
   }
 }
