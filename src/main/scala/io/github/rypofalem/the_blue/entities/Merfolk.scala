@@ -9,6 +9,7 @@ import net.minecraft.client.util.math.MatrixStack
 import net.minecraft.entity.passive.{AbstractTraderEntity, PassiveEntity}
 import net.minecraft.entity.{Entity, EntityDimensions, EntityPose, EntityType}
 import net.minecraft.util.Identifier
+import net.minecraft.util.math.MathHelper
 import net.minecraft.village.TradeOffer
 import net.minecraft.world.World
 
@@ -36,8 +37,6 @@ class MerfolkRenderer(erd:EntityRenderDispatcher) extends MobEntityRenderer[Merf
 }
 
 class MerfolkModel[T<:Entity] extends EntityModel[T]{
-
-
   textureWidth = 64
   textureHeight = 64
 
@@ -66,7 +65,7 @@ class MerfolkModel[T<:Entity] extends EntityModel[T]{
   val finbone = new ModelPart(this)
   finbone.setPivot(0.0F, -0.5F, 6.0F)
   tailbone.addChild(finbone)
-  finbone.setTextureOffset(40,13).addCuboid(-5.0F, -0.5F, -1.0F, 10, 1, 4, 0.0F, false)
+  finbone.setTextureOffset(33,13).addCuboid(-5.0F, -0.5F, -1.0F, 10, 1, 4, 0.0F, false)
 
   override def render(mat: MatrixStack, vc: VertexConsumer, light: Int, overlay: Int, red: Float, green: Float, blue: Float, alpha: Float): Unit = {
     headbone.render(mat, vc, light, overlay, red, green, blue, alpha)
@@ -77,6 +76,7 @@ class MerfolkModel[T<:Entity] extends EntityModel[T]{
   override def setAngles(entity: T, limbAngle: Float, limbDistance: Float, customAngle: Float, headYaw: Float, headPitch: Float): Unit = {
     headbone.yaw = headYaw
     headbone.pitch = headPitch
+    tailbone.pitch = -0.1F * MathHelper.cos(customAngle * 0.3F);
+    finbone.pitch =  -0.2F * MathHelper.cos(customAngle * 0.3F)
   }
-
 }
