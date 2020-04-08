@@ -5,19 +5,19 @@ import java.util.Random
 import io.github.rypofalem.the_blue.TheBlueMod
 import io.github.rypofalem.the_blue.inventory.SimpleInventory
 import net.fabricmc.fabric.api.block.entity.BlockEntityClientSerializable
-import net.minecraft.block.{Block, BlockEntityProvider, BlockState, Waterloggable}
 import net.minecraft.block.entity.BlockEntity
+import net.minecraft.block.{Block, BlockEntityProvider, BlockState, Waterloggable}
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.item.TooltipContext
 import net.minecraft.client.render.VertexConsumerProvider
 import net.minecraft.client.render.block.entity.{BlockEntityRenderDispatcher, BlockEntityRenderer}
 import net.minecraft.client.render.model.json.ModelTransformation
-import net.minecraft.client.util.math.{MatrixStack, Vector3d, Vector3f}
-import net.minecraft.entity.{EntityContext, ItemEntity, LivingEntity}
+import net.minecraft.client.util.math.{MatrixStack, Vector3f}
 import net.minecraft.entity.player.PlayerEntity
+import net.minecraft.entity.{EntityContext, ItemEntity, LivingEntity}
 import net.minecraft.fluid.{FluidState, Fluids}
 import net.minecraft.inventory.SidedInventory
-import net.minecraft.item.{BlockItem, Item, ItemPlacementContext, ItemStack, Items}
+import net.minecraft.item._
 import net.minecraft.loot.LootTables
 import net.minecraft.loot.context.{LootContext, LootContextParameters, LootContextTypes}
 import net.minecraft.nbt.CompoundTag
@@ -26,9 +26,9 @@ import net.minecraft.state.StateManager
 import net.minecraft.state.property.{BooleanProperty, Properties}
 import net.minecraft.text.{Text, TranslatableText}
 import net.minecraft.util.hit.BlockHitResult
-import net.minecraft.util.{ActionResult, Hand, Tickable}
-import net.minecraft.util.math.{BlockPos, Direction}
+import net.minecraft.util.math.{BlockPos, Direction, MathHelper}
 import net.minecraft.util.shape.VoxelShape
+import net.minecraft.util.{ActionResult, Hand, Tickable}
 import net.minecraft.world.chunk.{ChunkStatus, WorldChunk}
 import net.minecraft.world.{BlockView, IWorld, World}
 
@@ -217,13 +217,10 @@ class FishingNetBlock(settings:Block.Settings) extends Block(settings) with Bloc
     builder.add(FishingNetBlock.WATERLOGGED)
   }
 
+  //noinspection ScalaDeprecation
   override def getFluidState(state: BlockState): FluidState =
     if (state.get(FishingNetBlock.WATERLOGGED)) Fluids.WATER.getStill(false)
     else super.getFluidState(state)
-
-//  override def onBlockAdded(state: BlockState, world: World, pos: BlockPos, oldState: BlockState, moved: Boolean): Unit = {
-//    if (!world.isClient) world.getBlockTickScheduler.schedule(pos, this, 1)
-//  }
 
   override def onPlaced(world: World, pos: BlockPos, state: BlockState, placer: LivingEntity, itemStack: ItemStack): Unit = {
     super.onPlaced(world, pos, state, placer, itemStack)
@@ -276,9 +273,9 @@ class FishingNetRenderer(dispatcher:BlockEntityRenderDispatcher)
       matrices.push()
       // move to center of block and then outward in a circle
       matrices.translate(
-        radius*math.sin(rotation) + .5f,
+        radius*MathHelper.sin(rotation) + .5f,
         .3f, // items are tall
-        radius*math.cos(rotation) + .5f)
+        radius*MathHelper.cos(rotation) + .5f)
       // rotate to match it's position, then an extra quarter circle so that it's edge points to the center
       matrices.multiply(Vector3f.POSITIVE_Y.getRadialQuaternion(rotation + quarterCircle) )
       MinecraftClient.getInstance.getItemRenderer.
