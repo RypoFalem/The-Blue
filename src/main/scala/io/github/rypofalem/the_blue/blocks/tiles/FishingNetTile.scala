@@ -274,8 +274,7 @@ class FishingNetRenderer(dispatcher: BlockEntityRenderDispatcher)
 
     for (i <- 0 until itemCount) {
       val stack = net.getInvStack(i)
-      val rotation = separationRadians * i +
-        time / 15
+      val rotation = separationRadians * i + time / 15
       matrices.push()
       // move to center of block and then outward in a circle
       matrices.translate(
