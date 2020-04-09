@@ -5,8 +5,9 @@ import java.util.Random
 import io.github.rypofalem.the_blue.TheBlueMod
 import io.github.rypofalem.the_blue.inventory.SimpleInventory
 import net.fabricmc.fabric.api.block.entity.BlockEntityClientSerializable
+import net.minecraft.advancement.criterion.Criterions
+import net.minecraft.block._
 import net.minecraft.block.entity.BlockEntity
-import net.minecraft.block.{Block, BlockEntityProvider, BlockState, Waterloggable}
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.item.TooltipContext
 import net.minecraft.client.render.VertexConsumerProvider
@@ -21,16 +22,18 @@ import net.minecraft.item._
 import net.minecraft.loot.LootTables
 import net.minecraft.loot.context.{LootContext, LootContextParameters, LootContextTypes}
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.server.world.ServerWorld
+import net.minecraft.sound.{SoundCategory, SoundEvents}
 import net.minecraft.state.StateManager
 import net.minecraft.state.property.{BooleanProperty, Properties}
 import net.minecraft.text.{Text, TranslatableText}
-import net.minecraft.util.hit.BlockHitResult
+import net.minecraft.util.hit.{BlockHitResult, HitResult}
 import net.minecraft.util.math.{BlockPos, Direction, MathHelper}
 import net.minecraft.util.shape.VoxelShape
-import net.minecraft.util.{ActionResult, Hand, Tickable}
+import net.minecraft.util.{ActionResult, Hand, Tickable, TypedActionResult}
 import net.minecraft.world.chunk.{ChunkStatus, WorldChunk}
-import net.minecraft.world.{BlockView, IWorld, World}
+import net.minecraft.world.{BlockView, IWorld, RayTraceContext, World}
 
 import scala.jdk.CollectionConverters._
 
@@ -305,5 +308,32 @@ class FishingNetItem(block: FishingNetBlock, settings: Item.Settings) extends Bl
     tooltip.add(new TranslatableText("item.the_blue.fishingnet.tip4"))
     tooltip.add(new TranslatableText("item.the_blue.fishingnet.tip5"))
     tooltip.add(new TranslatableText("item.the_blue.fishingnet.tip6"))
+  }
+
+  //todo this is a bit hacky. Consider telling the client to interact with fluids?
+  override def use(world: World, user: PlayerEntity, hand: Hand): TypedActionResult[ItemStack] = {
+    val itemStack = user.getStackInHand(hand)
+    val hitResult = Item.rayTrace(world, user, RayTraceContext.FluidHandling.SOURCE_ONLY)
+    if (hitResult.getType == HitResult.Type.MISS) return TypedActionResult.pass(itemStack)
+
+    if (hitResult.getType == HitResult.Type.BLOCK) {
+      val blockHitResult = hitResult.asInstanceOf[BlockHitResult]
+      val blockPos = blockHitResult.getBlockPos
+      if (!world.canPlayerModifyAt(user, blockPos)) return TypedActionResult.fail(itemStack)
+      val blockState = world.getBlockState(blockPos)
+      if (world.getFluidState(blockPos).getFluid == Fluids.WATER && blockState.getMaterial == Material.WATER) {
+        user match {
+          case player: ServerPlayerEntity =>
+            val actionResult = itemStack.useOnBlock(new ItemUsageContext(user, hand, blockHitResult))
+            if (actionResult.isAccepted) {
+              Criterions.PLACED_BLOCK.trigger(player, blockPos, itemStack)
+              world.playSound(blockPos.getX, blockPos.getY, blockPos.getZ,
+                SoundEvents.BLOCK_WOOL_PLACE, SoundCategory.BLOCKS, 1, 1, false)
+            }
+        }
+        return TypedActionResult.success(itemStack)
+      }
+    }
+    TypedActionResult.fail(itemStack)
   }
 }
