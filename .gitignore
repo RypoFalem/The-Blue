@@ -5,5 +5,5 @@ run/*
 *.iml
 *.ipr
 *.iws
-ideas.txt
 models/*
+ideas.txt
