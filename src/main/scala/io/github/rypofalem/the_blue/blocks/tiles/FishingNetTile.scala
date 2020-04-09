@@ -225,7 +225,11 @@ class FishingNetBlock(settings: Block.Settings) extends Block(settings) with Blo
     if (state.get(FishingNetBlock.WATERLOGGED)) Fluids.WATER.getStill(false)
     else super.getFluidState(state)
 
-  override def onPlaced(world: World, pos: BlockPos, state: BlockState, placer: LivingEntity, itemStack: ItemStack): Unit = {
+  override def onPlaced(world: World,
+                        pos: BlockPos,
+                        state: BlockState,
+                        placer: LivingEntity,
+                        itemStack: ItemStack): Unit = {
     super.onPlaced(world, pos, state, placer, itemStack)
     if (!world.isClient &&
       world.getBlockEntity(pos).asInstanceOf[FishingNetTile].closeNets.nonEmpty &&
@@ -291,7 +295,10 @@ class FishingNetRenderer(dispatcher: BlockEntityRenderDispatcher)
 }
 
 class FishingNetItem(block: FishingNetBlock, settings: Item.Settings) extends BlockItem(block, settings) {
-  override def appendTooltip(itemStack: ItemStack, world: World, tooltip: java.util.List[Text], tooltipContext: TooltipContext): Unit = {
+  override def appendTooltip(itemStack: ItemStack,
+                             world: World,
+                             tooltip: java.util.List[Text],
+                             tooltipContext: TooltipContext): Unit = {
     tooltip.add(new TranslatableText("item.the_blue.fishingnet.tip1"))
     tooltip.add(new TranslatableText("item.the_blue.fishingnet.tip2"))
     tooltip.add(new TranslatableText("item.the_blue.fishingnet.tip3"))
