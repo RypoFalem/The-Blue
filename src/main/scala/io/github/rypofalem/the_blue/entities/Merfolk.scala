@@ -150,13 +150,13 @@ class MerfolkModel[T <: Merfolk] extends EntityModel[T] {
     addCuboid(-0.5F, -3.5F, -2.0F, 1, 8, 8, 0.0F, false)
 
   val rightsidefin = new ModelPart(this)
-  rightsidefin.setPivot(-4.0F, -4.25F, -1.0F)
+  rightsidefin.setPivot(-4.0F, -4F, -1.0F)
   headbone.addChild(rightsidefin)
   rightsidefin.setTextureOffset(47, 55).
     addCuboid(-3.0F, -0.25F, -2.0F, 4, 1, 4, 0.0F, false)
 
   val leftsidefin = new ModelPart(this)
-  leftsidefin.setPivot(4.0F, -4.25F, -1.0F)
+  leftsidefin.setPivot(4.0F, -4F, -1.0F)
   headbone.addChild(leftsidefin)
   leftsidefin.setTextureOffset(47, 55).
     addCuboid(-1.0F, -0.25F, -2.0F, 4, 1, 4, 0.0F, true)
@@ -213,8 +213,8 @@ class MerfolkModel[T <: Merfolk] extends EntityModel[T] {
     val cosAngle = -0.1F * MathHelper.cos(customAngle * 0.3F)
     tailbone.pitch = cosAngle
     finbone.pitch = 2 * cosAngle
-    leftsidefin.roll = cosAngle
-    rightsidefin.roll = -cosAngle
+    leftsidefin.roll =.1f + cosAngle
+    rightsidefin.roll = -.1f - cosAngle
     rightarm.pitch = MathHelper.sin(limbAngle * .3f) * .33f
     leftarm.pitch = MathHelper.cos(limbAngle * .3f) * .33f
   }
