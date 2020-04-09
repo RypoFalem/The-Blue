@@ -40,12 +40,10 @@
   "depends": {
     "fabricloader": ">=0.7.4",
     "fabric": "*",
-    "minecraft": "1.15.x"
+    "minecraft": "1.15.x",
+    "fabric-language-scala": "*"
   },
   "suggests": {
     "flamingo": "*"
-  },
-  "requires": {
-    "fabric-language-scala": "*"
   }
 }
