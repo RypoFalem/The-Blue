@@ -1,40 +1,119 @@
 package io.github.rypofalem.the_blue.entities
 
 import io.github.rypofalem.the_blue.TheBlueMod
+import javax.annotation.Nullable
 import net.minecraft.client.model.ModelPart
 import net.minecraft.client.render.VertexConsumer
 import net.minecraft.client.render.entity.model.EntityModel
 import net.minecraft.client.render.entity.{EntityRenderDispatcher, MobEntityRenderer}
 import net.minecraft.client.util.math.MatrixStack
+import net.minecraft.entity._
+import net.minecraft.entity.ai.control.MoveControl
 import net.minecraft.entity.ai.goal._
 import net.minecraft.entity.ai.pathing.SwimNavigation
+import net.minecraft.entity.attribute.EntityAttributes
+import net.minecraft.entity.damage.DamageSource
 import net.minecraft.entity.mob.{GuardianEntity, WaterCreatureEntity}
 import net.minecraft.entity.player.PlayerEntity
-import net.minecraft.entity.{Entity, EntityDimensions, EntityPose, EntityType}
+import net.minecraft.item.Item.Settings
+import net.minecraft.item.SpawnEggItem
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.sound.SoundEvents
 import net.minecraft.util.Identifier
-import net.minecraft.util.math.MathHelper
-import net.minecraft.world.World
+import net.minecraft.util.math.{MathHelper, Vec3d}
+import net.minecraft.world.{IWorld, LocalDifficulty, World}
 
 class Merfolk(typee: EntityType[Merfolk], world: World) extends WaterCreatureEntity(typee, world) {
+  moveControl = new MerfolkMoveControl(this)
 
-  override protected def initGoals(): Unit = {
-    this.goalSelector.add(0, new BreatheAirGoal(this))
-    this.goalSelector.add(0, new MoveIntoWaterGoal(this))
-    this.goalSelector.add(4, new SwimAroundGoal(this, 1, 10))
-    this.goalSelector.add(4, new LookAroundGoal(this))
-    this.goalSelector.add(5, new LookAtEntityGoal(this, classOf[PlayerEntity], 6F))
-    this.goalSelector.add(6, new MeleeAttackGoal(this, 1.2, true))
-    this.goalSelector.add(8, new ChaseBoatGoal(this))
-    this.goalSelector.add(9, new FleeEntityGoal(this, classOf[GuardianEntity], 8F, 1, 1))
-    this.targetSelector.add(1, new RevengeGoal(this, classOf[GuardianEntity]).setGroupRevenge(classOf[GuardianEntity]))
+  @Nullable override def initialize(world: IWorld, difficulty: LocalDifficulty, spawnType: SpawnType, @Nullable entityData: EntityData, @Nullable entityTag: CompoundTag): EntityData = {
+    this.pitch = 0.0F
+    super.initialize(world, difficulty, spawnType, entityData, entityTag)
   }
 
   override def tickWaterBreathingAir(air: Int): Unit = {} // don't drown in air
 
+  override def tryAttack(target: Entity): Boolean = {
+    if (target.damage(
+      DamageSource.mob(this), getAttributeInstance(EntityAttributes.ATTACK_DAMAGE).getValue.toInt.toFloat)
+    ) {
+      dealDamage(this, target)
+      playSound(SoundEvents.ENTITY_DOLPHIN_ATTACK, 1.0F, 1.0F)
+      true
+    } else false
+  }
+
+  override def travel(movementInput: Vec3d): Unit = {
+    if (canMoveVoluntarily && isTouchingWater) {
+      updateVelocity(getMovementSpeed, movementInput)
+      move(MovementType.SELF, getVelocity)
+      setVelocity(getVelocity.multiply(.9))
+      if (getTarget == null) setVelocity(getVelocity.add(0, -.005, 0))
+    }
+    else super.travel(movementInput)
+  }
+
+  override protected def initGoals(): Unit = {
+    goalSelector.add(0, new MoveIntoWaterGoal(this))
+    goalSelector.add(4, new SwimAroundGoal(this, 1, 10))
+    goalSelector.add(4, new LookAroundGoal(this))
+    goalSelector.add(5, new LookAtEntityGoal(this, classOf[PlayerEntity], 6F))
+    goalSelector.add(6, new MeleeAttackGoal(this, 1.2, true))
+    goalSelector.add(9, new FleeEntityGoal(this, classOf[GuardianEntity], 8F, 1, 1))
+    targetSelector.add(1, new RevengeGoal(this, classOf[GuardianEntity]).setGroupRevenge(classOf[GuardianEntity]))
+  }
+
+  override protected def initAttributes(): Unit = {
+    super.initAttributes()
+    getAttributeInstance(EntityAttributes.MAX_HEALTH).setBaseValue(10)
+    getAttributeInstance(EntityAttributes.MOVEMENT_SPEED).setBaseValue(.15f)
+    getAttributes.register(EntityAttributes.ATTACK_DAMAGE)
+    getAttributeInstance(EntityAttributes.ATTACK_DAMAGE).setBaseValue(1)
+  }
+
   override protected def createNavigation(world: World) = new SwimNavigation(this, world)
 
   override protected def getActiveEyeHeight(pose: EntityPose, dimensions: EntityDimensions): Float =
-    if (this.isBaby) 0.7F else 1.2F
+    if (isBaby) 0.7F else 1.4F
+
+  private class MerfolkMoveControl(val merfolk: Merfolk) extends MoveControl(merfolk) {
+    override def tick(): Unit = {
+      if (merfolk.isTouchingWater) merfolk.setVelocity(merfolk.getVelocity.add(0.0D, 0.005D, 0.0D))
+      if (state == MoveControl.State.MOVE_TO && !merfolk.getNavigation.isIdle) {
+        val dX = targetX - merfolk.getX
+        val dY = targetY - merfolk.getY
+        val dZ = targetZ - merfolk.getZ
+        val dToTargetSquared = dX * dX + dY * dY + dZ * dZ
+        if (dToTargetSquared < 2.5E-7D) entity.setForwardSpeed(0.0F)
+        else {
+          val h = (MathHelper.atan2(dZ, dX) * 57.2957763671875D).toFloat - 90.0F
+          merfolk.yaw = this.changeAngle(merfolk.yaw, h, 15F)
+          merfolk.bodyYaw = merfolk.yaw
+          merfolk.headYaw = merfolk.yaw
+          val effectiveSpeed = (speed * merfolk.getAttributeInstance(EntityAttributes.MOVEMENT_SPEED).getValue).toFloat
+          if (merfolk.isTouchingWater) {
+            merfolk.setMovementSpeed(effectiveSpeed)
+            val pitchTarget = MathHelper.clamp(
+              MathHelper.wrapDegrees(MathHelper.atan2(dY, MathHelper.sqrt(dX * dX + dZ * dZ)).toFloat * -57.3f),
+              -85, 85)
+            merfolk.pitch = this.changeAngle(merfolk.pitch, pitchTarget, 8)
+            val toDegree = 0.017453292F
+            val forwardRatio = MathHelper.cos(merfolk.pitch * toDegree)
+            val upwardRatio = MathHelper.sin(merfolk.pitch * toDegree)
+            merfolk.forwardSpeed = forwardRatio * effectiveSpeed
+            merfolk.upwardSpeed = -upwardRatio * effectiveSpeed
+          }
+          else merfolk.setMovementSpeed(effectiveSpeed * .5f)
+        }
+      }
+      else {
+        merfolk.setMovementSpeed(0.0F)
+        merfolk.setSidewaysSpeed(0.0F)
+        merfolk.setUpwardSpeed(0.0F)
+        merfolk.setForwardSpeed(0.0F)
+      }
+    }
+  }
 
 }
 
@@ -113,3 +192,6 @@ class MerfolkModel[T <: Entity] extends EntityModel[T] {
 
   def toDegrees(rad: Float): Float = rad * 0.017453292F
 }
+
+final class MerfolkEgg(set: Settings)
+  extends SpawnEggItem(TheBlueMod.merfolkType, 0x3d828c, 0x386784, set) {}

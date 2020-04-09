@@ -2,7 +2,7 @@ package io.github.rypofalem.the_blue
 
 import io.github.rypofalem.the_blue.TheBlueMod.{fishingNetBlock, fishingNetTileType}
 import io.github.rypofalem.the_blue.blocks.tiles.{FishingNetBlock, FishingNetItem, FishingNetRenderer, FishingNetTile}
-import io.github.rypofalem.the_blue.entities.{Merfolk, MerfolkRenderer}
+import io.github.rypofalem.the_blue.entities.{Merfolk, MerfolkEgg, MerfolkRenderer}
 import net.fabricmc.api.{ClientModInitializer, ModInitializer}
 import net.fabricmc.fabric.api.block.FabricBlockSettings
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap
@@ -41,12 +41,15 @@ object TheBlueMod extends ModInitializer {
     size(EntityDimensions.fixed(.625f, 1.875f)).
     build()
 
+  val merfolkEgg: MerfolkEgg = new MerfolkEgg(new Item.Settings().group(ItemGroup.MISC))
+
   override def onInitialize(): Unit = {
     registerBlock("fishingnet", fishingNetBlock)
     registerItem("fishingnet", fishingNetItem)
     registerTile("fishingnet", fishingNetTileType)
     registerItem("kelp_string", kelpStringItem)
     registerEntity("merfolk", merfolkType)
+    registerItem("merfolk_egg", merfolkEgg)
   }
 
   private def registerEntity[T <: Entity](name: String, entityType: EntityType[T]): EntityType[T] =
