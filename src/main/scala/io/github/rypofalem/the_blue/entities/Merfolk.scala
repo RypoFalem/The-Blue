@@ -128,7 +128,7 @@ class MerfolkRenderer(erd: EntityRenderDispatcher)
     new Identifier(TheBlueMod.modid, "textures/entity/merfolk.png")
 }
 
-class MerfolkModel[T <: Entity] extends EntityModel[T] {
+class MerfolkModel[T <: Merfolk] extends EntityModel[T] {
   textureWidth = 64
   textureHeight = 64
 
@@ -210,11 +210,11 @@ class MerfolkModel[T <: Entity] extends EntityModel[T] {
                          headPitch: Float): Unit = {
     headbone.yaw = toDegrees(headYaw)
     headbone.pitch = toDegrees(headPitch)
-    val cosAngle = MathHelper.cos(customAngle * 0.3F)
-    tailbone.pitch = -0.1F * cosAngle
-    finbone.pitch = -0.2F * cosAngle
-    leftsidefin.roll = -0.1F * cosAngle
-    rightsidefin.roll = 0.1F * cosAngle
+    val cosAngle = -0.1F * MathHelper.cos(customAngle * 0.3F)
+    tailbone.pitch = cosAngle
+    finbone.pitch = 2 * cosAngle
+    leftsidefin.roll = cosAngle
+    rightsidefin.roll = -cosAngle
     rightarm.pitch = MathHelper.sin(limbAngle * .3f) * .33f
     leftarm.pitch = MathHelper.cos(limbAngle * .3f) * .33f
   }
