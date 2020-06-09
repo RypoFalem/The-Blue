@@ -11,45 +11,45 @@ import scala.collection.immutable.HashMap
 // concrete classes and objects still need to implement getInvSize:Int and markDirty():Unit
 // todo handle overriding getInvMaxStackAmount:Int by ensuring that is enforced
 trait SimpleInventory extends Inventory {
-  protected val items: Array[ItemStack] = new Array[ItemStack](getInvSize) map { _ => ItemStack.EMPTY }
+  protected val items: Array[ItemStack] = new Array[ItemStack](size) map { _ => ItemStack.EMPTY }
 
-  override def isInvEmpty: Boolean = items.find(!_.isEmpty) match {
+  override def isEmpty: Boolean = items.find(!_.isEmpty) match {
     case Some(_) => false // if we found an item that is not empty, return false
     case _ => true // all slots contained an item, return true
-  }
-
-  // take a number of items from the given slot
-  // if the slot doesn't contain enough items, take the whole itemstack instead
-  override def takeInvStack(slot: Int, amount: Int): ItemStack = {
-    markDirty()
-    val item = getInvStack(slot)
-    if (item.getCount > amount) {
-      // reduce the itemstack count and return a new itemstack with that amount
-      item.setCount(item.getCount - amount)
-      new ItemStack(item.getItem, amount)
-    } else removeInvStack(slot)
   }
 
   // return a copy of the item in the slot
   // to modify the slot use setInvStack
   // todo Will only sending copies cause issues?
   // todo It seems dangerous to send callers mutable ItemStacks without knowing when to mark dirty in case they change it
-  override def getInvStack(slot: Int): ItemStack = items(slot).copy()
+  override def getStack(slot: Int): ItemStack = items(slot).copy()
 
   // empty the item slot and return the entire stack
-  override def removeInvStack(slot: Int): ItemStack = {
+  override def removeStack(slot: Int): ItemStack = {
     markDirty()
-    val item = getInvStack(slot)
+    val item = getStack(slot)
     items(slot) = ItemStack.EMPTY
     item
   }
 
-  override def setInvStack(slot: Int, stack: ItemStack): Unit = {
+  // take a number of items from the given slot
+  // if the slot doesn't contain enough items, take the whole itemstack instead
+  override def removeStack(slot: Int, amount: Int): ItemStack = {
+    markDirty()
+    val item = getStack(slot)
+    if (item.getCount > amount) {
+      // reduce the itemstack count and return a new itemstack with that amount
+      item.setCount(item.getCount - amount)
+      new ItemStack(item.getItem, amount)
+    } else removeStack(slot)
+  }
+
+  override def setStack(slot: Int, stack: ItemStack): Unit = {
     markDirty()
     items(slot) = stack
   }
 
-  override def canPlayerUseInv(player: PlayerEntity): Boolean = true
+  override def canPlayerUse(player: PlayerEntity): Boolean = true
 
   override def clear(): Unit = {
     markDirty()

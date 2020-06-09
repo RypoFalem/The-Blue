@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '0.2.7-SNAPSHOT'
+    id 'fabric-loom' version '0.4-SNAPSHOT'
     id 'maven-publish'
     id 'scala'
 }
@@ -44,7 +44,7 @@ sourceSets {
         java {srcDirs = []}
     }
     test {
-        scala {srcDirs = ['src/main/scala', 'src/main/java']}
+        scala {srcDirs = ['src/test/scala', 'src/test/java']}
         java {srcDirs = []}
     }
 }

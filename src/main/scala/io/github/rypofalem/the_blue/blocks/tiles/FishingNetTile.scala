@@ -5,8 +5,8 @@ import java.util.Random
 import io.github.rypofalem.the_blue.TheBlueMod
 import io.github.rypofalem.the_blue.inventory.SimpleInventory
 import net.fabricmc.fabric.api.block.entity.BlockEntityClientSerializable
-import net.minecraft.advancement.criterion.Criterions
-import net.minecraft.block._
+import net.minecraft.advancement.criterion.Criteria
+import net.minecraft.block.{AbstractBlock, Block, BlockEntityProvider, BlockState, Material, ShapeContext, Waterloggable}
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.item.TooltipContext
@@ -14,11 +14,11 @@ import net.minecraft.client.render.VertexConsumerProvider
 import net.minecraft.client.render.block.entity.{BlockEntityRenderDispatcher, BlockEntityRenderer}
 import net.minecraft.client.render.model.json.ModelTransformation
 import net.minecraft.client.util.math.{MatrixStack, Vector3f}
+import net.minecraft.entity.{ItemEntity, LivingEntity}
 import net.minecraft.entity.player.PlayerEntity
-import net.minecraft.entity.{EntityContext, ItemEntity, LivingEntity}
 import net.minecraft.fluid.{FluidState, Fluids}
 import net.minecraft.inventory.SidedInventory
-import net.minecraft.item._
+import net.minecraft.item.{BlockItem, Item, ItemPlacementContext, ItemStack, ItemUsageContext, Items}
 import net.minecraft.loot.LootTables
 import net.minecraft.loot.context.{LootContext, LootContextParameters, LootContextTypes}
 import net.minecraft.nbt.CompoundTag
@@ -29,12 +29,11 @@ import net.minecraft.state.StateManager
 import net.minecraft.state.property.{BooleanProperty, Properties}
 import net.minecraft.text.{Text, TranslatableText}
 import net.minecraft.util.hit.{BlockHitResult, HitResult}
+import net.minecraft.util.{ActionResult, Hand, Tickable, TypedActionResult}
 import net.minecraft.util.math.{BlockPos, Direction, MathHelper}
 import net.minecraft.util.shape.VoxelShape
-import net.minecraft.util.{ActionResult, Hand, Tickable, TypedActionResult}
+import net.minecraft.world.{BlockView, RayTraceContext, World, WorldAccess}
 import net.minecraft.world.chunk.{ChunkStatus, WorldChunk}
-import net.minecraft.world.{BlockView, IWorld, RayTraceContext, World}
-
 import scala.jdk.CollectionConverters._
 
 class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
@@ -50,7 +49,7 @@ class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
   // keep track of the number of slots filled so we don't have to loop through inventory on client render thread
   protected[the_blue] var filledSlots: Int = 0
 
-  override def getInvSize: Int = 10
+  override def size: Int = 10
 
   override def tick(): Unit = {
     if (world.isClient) return
@@ -71,7 +70,7 @@ class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
     if (!world.getBlockState(pos).get(FishingNetBlock.WATERLOGGED)) return // don't catch fish without water!
     for {
       // find the first empty Item index, which is Int component of the tuple
-      emptyItem: (ItemStack, Int) <- items.zipWithIndex.find { case (stack, _) => stack.isEmpty }
+      emptyItem: (ItemStack, Int) <- items.zipWithIndex.find { case (stack:ItemStack, _) => stack.isEmpty }
       loot = getRandomFishingLoot
       if !loot.isEmpty
     } {
@@ -86,7 +85,7 @@ class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
   // ItemStack will always be empty if called client side
   def getRandomFishingLoot: ItemStack = {
     if (world.isClient) return ItemStack.EMPTY
-    val itemList = getWorld.getServer.getLootManager.getSupplier(LootTables.FISHING_GAMEPLAY).getDrops(getLootContext)
+    val itemList = getWorld.getServer.getLootManager.getTable(LootTables.FISHING_GAMEPLAY).generateLoot(getLootContext)
     if (itemList.isEmpty) ItemStack.EMPTY
     else itemList.get(0)
   }
@@ -94,10 +93,10 @@ class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
   // Build and return a fishing LootContext based on this block's properties
   def getLootContext: LootContext = {
     new LootContext.Builder(world.asInstanceOf[ServerWorld])
-      .setRandom(world.getRandom)
-      .put(LootContextParameters.POSITION, getPos)
-      .put(LootContextParameters.TOOL, new ItemStack(Items.FISHING_ROD))
-      .setLuck(luck)
+      .random(world.getRandom)
+      .parameter(LootContextParameters.POSITION, getPos)
+      .parameter(LootContextParameters.TOOL, new ItemStack(Items.FISHING_ROD))
+      .luck(luck)
       .build(LootContextTypes.FISHING)
   }
 
@@ -138,10 +137,10 @@ class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
   protected def timeBonus: Int = (60 * 20 * luck).toInt // one minute of ticks per unit of luck
 
   // sync server -> clients todo: maybe not all tags need to be synced
-  override def fromClientTag(tag: CompoundTag): Unit = fromTag(tag)
+  override def fromClientTag( tag: CompoundTag): Unit = fromTag(getCachedState, tag)
 
-  override def fromTag(tag: CompoundTag): Unit = {
-    super.fromTag(tag)
+  override def fromTag(state: BlockState, tag: CompoundTag): Unit = {
+    super.fromTag(state, tag)
     luck = tag.getFloat("luck")
     ticksTilNextFish = tag.getInt("ticksTilNextFish")
     filledSlots = tag.getInt("filledSlots")
@@ -162,17 +161,19 @@ class FishingNetTile extends BlockEntity(TheBlueMod.fishingNetTileType)
   def getFilledSlots: Int = filledSlots
 
   // restrict inputting and outputting items from all sides
-  override def getInvAvailableSlots(side: Direction): Array[Int] = Array.empty[Int]
+  override def getAvailableSlots(side: Direction): Array[Int] = Array.empty[Int]
 
-  override def canInsertInvStack(slot: Int, stack: ItemStack, dir: Direction): Boolean = false
+  override def canInsert(slot: Int, stack: ItemStack, dir: Direction): Boolean = false
 
-  override def canExtractInvStack(slot: Int, stack: ItemStack, dir: Direction): Boolean = false
+  override def canExtract(slot: Int, stack: ItemStack, dir: Direction): Boolean = false
 }
 
 
 // TODO render items in block
-class FishingNetBlock(settings: Block.Settings) extends Block(settings) with BlockEntityProvider with Waterloggable {
+class FishingNetBlock(settings: AbstractBlock.Settings) extends Block(settings) with BlockEntityProvider with Waterloggable {
   setDefaultState(getStateManager.getDefaultState.`with`(FishingNetBlock.WATERLOGGED, java.lang.Boolean.FALSE))
+
+
 
   override def createBlockEntity(blockView: BlockView) = new FishingNetTile
 
@@ -198,11 +199,11 @@ class FishingNetBlock(settings: Block.Settings) extends Block(settings) with Blo
         offset(side.getOffsetZ) + pos.getZ)
     }
     for {
-      slot <- 0 until net.getInvSize
-      item = net.getInvStack(slot)
+      slot <- 0 until net.size
+      item = net.getStack(slot)
       if !item.isEmpty
     } {
-      net.setInvStack(slot, ItemStack.EMPTY)
+      net.setStack(slot, ItemStack.EMPTY)
       lootCount += 1
       val worldItem = new ItemEntity(world, dropLocation._1, dropLocation._2, dropLocation._3, item)
       worldItem.setPickupDelay(0)
@@ -214,7 +215,7 @@ class FishingNetBlock(settings: Block.Settings) extends Block(settings) with Blo
       dropExperience(world, pos, lootCount * 3)
     }
     else {
-      player.sendMessage(new TranslatableText("block.the_blue.fishingnet.scare_fish"))
+      player.sendMessage(new TranslatableText("block.the_blue.fishingnet.scare_fish"), true)
       net.timerPunishment(20 * 15) // add 15 seconds to the timer if the player checked an empty net
     }
 
@@ -237,13 +238,13 @@ class FishingNetBlock(settings: Block.Settings) extends Block(settings) with Blo
     if (!world.isClient &&
       world.getBlockEntity(pos).asInstanceOf[FishingNetTile].closeNets.nonEmpty &&
       placer.isInstanceOf[PlayerEntity]
-    ) placer.asInstanceOf[PlayerEntity].sendMessage(new TranslatableText("block.the_blue.fishingnet.too_close"))
+    ) placer.asInstanceOf[PlayerEntity].sendMessage(new TranslatableText("block.the_blue.fishingnet.too_close"), true)
   }
 
-  override def getOutlineShape(state: BlockState, view: BlockView, pos: BlockPos, context: EntityContext): VoxelShape =
+  override def getOutlineShape(state: BlockState, view: BlockView, pos: BlockPos, context: ShapeContext): VoxelShape =
     FishingNetBlock.SHAPE
 
-  override def getStateForNeighborUpdate(state: BlockState, facing: Direction, neighborState: BlockState, world: IWorld,
+  override def getStateForNeighborUpdate(state: BlockState, facing: Direction, newState: BlockState, world: WorldAccess,
                                          pos: BlockPos, neighborPos: BlockPos): BlockState = {
     if (state.get(FishingNetBlock.WATERLOGGED))
       world.getFluidTickScheduler.schedule(pos, Fluids.WATER, Fluids.WATER.getTickRate(world))
@@ -280,7 +281,7 @@ class FishingNetRenderer(dispatcher: BlockEntityRenderDispatcher)
     val separationRadians = fullCircle / itemCount // how many radians apart items are
 
     for (i <- 0 until itemCount) {
-      val stack = net.getInvStack(i)
+      val stack = net.getStack(i)
       val rotation = separationRadians * i + time / 15
       matrices.push()
       // move to center of block and then outward in a circle
@@ -326,10 +327,11 @@ class FishingNetItem(block: FishingNetBlock, settings: Item.Settings) extends Bl
           case player: ServerPlayerEntity =>
             val actionResult = itemStack.useOnBlock(new ItemUsageContext(user, hand, blockHitResult))
             if (actionResult.isAccepted) {
-              Criterions.PLACED_BLOCK.trigger(player, blockPos, itemStack)
+              Criteria.PLACED_BLOCK.trigger(player, blockPos, itemStack)
               world.playSound(blockPos.getX, blockPos.getY, blockPos.getZ,
                 SoundEvents.BLOCK_WOOL_PLACE, SoundCategory.BLOCKS, 1, 1, false)
             }
+          case _ =>  // nothing
         }
         return TypedActionResult.success(itemStack)
       }

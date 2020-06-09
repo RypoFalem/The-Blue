@@ -7,13 +7,13 @@ import net.minecraft.client.render.VertexConsumer
 import net.minecraft.client.render.entity.model.EntityModel
 import net.minecraft.client.render.entity.{EntityRenderDispatcher, MobEntityRenderer}
 import net.minecraft.client.util.math.MatrixStack
-import net.minecraft.entity._
 import net.minecraft.entity.ai.control.MoveControl
-import net.minecraft.entity.ai.goal._
+import net.minecraft.entity.ai.goal.{FleeEntityGoal, LookAroundGoal, LookAtEntityGoal, MeleeAttackGoal, MoveIntoWaterGoal, RevengeGoal, SwimAroundGoal}
 import net.minecraft.entity.ai.pathing.SwimNavigation
-import net.minecraft.entity.attribute.EntityAttributes
+import net.minecraft.entity.{Entity, EntityData, EntityDimensions, EntityPose, EntityType, MovementType, SpawnReason}
+import net.minecraft.entity.attribute.{DefaultAttributeContainer, EntityAttributes}
 import net.minecraft.entity.damage.DamageSource
-import net.minecraft.entity.mob.{GuardianEntity, WaterCreatureEntity}
+import net.minecraft.entity.mob.{GuardianEntity, MobEntity, WaterCreatureEntity}
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.item.Item.Settings
 import net.minecraft.item.SpawnEggItem
@@ -21,25 +21,35 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.sound.SoundEvents
 import net.minecraft.util.Identifier
 import net.minecraft.util.math.{MathHelper, Vec3d}
-import net.minecraft.world.{IWorld, LocalDifficulty, World}
+import net.minecraft.world.{LocalDifficulty, World, WorldAccess}
+
+object Merfolk{
+  def createAttributes: DefaultAttributeContainer = {
+    MobEntity.createMobAttributes().
+      add(EntityAttributes.GENERIC_MAX_HEALTH, 10).
+      add(EntityAttributes.GENERIC_MOVEMENT_SPEED, .15f).
+      add(EntityAttributes.GENERIC_ATTACK_DAMAGE, 1).
+      build()
+  }
+}
 
 class Merfolk(typee: EntityType[Merfolk], world: World) extends WaterCreatureEntity(typee, world) {
   moveControl = new MerfolkMoveControl(this)
 
-  @Nullable override def initialize(world: IWorld,
+  @Nullable override def initialize(world: WorldAccess,
                                     difficulty: LocalDifficulty,
-                                    spawnType: SpawnType,
+                                    spawnReason: SpawnReason,
                                     @Nullable entityData: EntityData,
                                     @Nullable entityTag: CompoundTag): EntityData = {
     this.pitch = 0.0F
-    super.initialize(world, difficulty, spawnType, entityData, entityTag)
+    super.initialize(world, difficulty, spawnReason, entityData, entityTag)
   }
 
   override def tickWaterBreathingAir(air: Int): Unit = {} // don't drown in air
 
   override def tryAttack(target: Entity): Boolean = {
     if (target.damage(
-      DamageSource.mob(this), getAttributeInstance(EntityAttributes.ATTACK_DAMAGE).getValue.toInt.toFloat)
+      DamageSource.mob(this), getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE).getValue.toInt.toFloat)
     ) {
       dealDamage(this, target)
       playSound(SoundEvents.ENTITY_DOLPHIN_ATTACK, 1.0F, 1.0F)
@@ -68,14 +78,6 @@ class Merfolk(typee: EntityType[Merfolk], world: World) extends WaterCreatureEnt
       new RevengeGoal(this, classOf[GuardianEntity]).setGroupRevenge(classOf[GuardianEntity]))
   }
 
-  override protected def initAttributes(): Unit = {
-    super.initAttributes()
-    getAttributeInstance(EntityAttributes.MAX_HEALTH).setBaseValue(10)
-    getAttributeInstance(EntityAttributes.MOVEMENT_SPEED).setBaseValue(.15f)
-    getAttributes.register(EntityAttributes.ATTACK_DAMAGE)
-    getAttributeInstance(EntityAttributes.ATTACK_DAMAGE).setBaseValue(1)
-  }
-
   override protected def createNavigation(world: World) = new SwimNavigation(this, world)
 
   override protected def getActiveEyeHeight(pose: EntityPose, dimensions: EntityDimensions): Float =
@@ -95,7 +97,7 @@ class Merfolk(typee: EntityType[Merfolk], world: World) extends WaterCreatureEnt
           merfolk.yaw = this.changeAngle(merfolk.yaw, h, 15F)
           merfolk.bodyYaw = merfolk.yaw
           merfolk.headYaw = merfolk.yaw
-          val effectiveSpeed = (speed * merfolk.getAttributeInstance(EntityAttributes.MOVEMENT_SPEED).getValue).toFloat
+          val effectiveSpeed = (speed * merfolk.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED).getValue).toFloat
           if (merfolk.isTouchingWater) {
             merfolk.setMovementSpeed(effectiveSpeed)
             val pitchTarget = MathHelper.clamp(

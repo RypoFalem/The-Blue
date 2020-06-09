@@ -4,16 +4,17 @@ import io.github.rypofalem.the_blue.TheBlueMod.{fishingNetBlock, fishingNetTileT
 import io.github.rypofalem.the_blue.blocks.tiles.{FishingNetBlock, FishingNetItem, FishingNetRenderer, FishingNetTile}
 import io.github.rypofalem.the_blue.entities.{Merfolk, MerfolkEgg, MerfolkRenderer}
 import net.fabricmc.api.{ClientModInitializer, ModInitializer}
-import net.fabricmc.fabric.api.block.FabricBlockSettings
+import net.fabricmc.fabric.api.`object`.builder.v1.block.FabricBlockSettings
+import net.fabricmc.fabric.api.`object`.builder.v1.entity.FabricEntityTypeBuilder
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap
 import net.fabricmc.fabric.api.client.itemgroup.FabricItemGroupBuilder
 import net.fabricmc.fabric.api.client.rendereregistry.v1.{BlockEntityRendererRegistry, EntityRendererRegistry}
-import net.fabricmc.fabric.api.entity.FabricEntityTypeBuilder
-import net.minecraft.block.entity.{BlockEntity, BlockEntityType}
+import net.fabricmc.fabric.mixin.`object`.builder.DefaultAttributeRegistryAccessor
 import net.minecraft.block.{Block, Material}
+import net.minecraft.block.entity.{BlockEntity, BlockEntityType}
 import net.minecraft.client.render.RenderLayer
 import net.minecraft.client.render.entity.EntityRenderDispatcher
-import net.minecraft.entity.{Entity, EntityCategory, EntityDimensions, EntityType}
+import net.minecraft.entity.{Entity, EntityDimensions, EntityType, SpawnGroup}
 import net.minecraft.item.{BlockItem, Item, ItemGroup, ItemStack}
 import net.minecraft.sound.BlockSoundGroup
 import net.minecraft.util.Identifier
@@ -29,7 +30,7 @@ object TheBlueMod extends ModInitializer {
 
 
   val fishingNetBlock: FishingNetBlock =
-    new FishingNetBlock(FabricBlockSettings.of(Material.WOOL).nonOpaque().sounds(BlockSoundGroup.WOOL).build)
+    new FishingNetBlock(FabricBlockSettings.of(Material.WOOL).nonOpaque().sounds(BlockSoundGroup.WOOL))
   val fishingNetTileType: BlockEntityType[FishingNetTile] =
     BlockEntityType.Builder.create(() => new FishingNetTile, fishingNetBlock).build(null)
   val fishingNetItem: BlockItem = new FishingNetItem(fishingNetBlock, new Item.Settings().group(itemGroup))
@@ -37,8 +38,8 @@ object TheBlueMod extends ModInitializer {
   val kelpStringItem: Item = new Item(new Item.Settings().group(itemGroup))
 
   val merfolkType: EntityType[Merfolk] = FabricEntityTypeBuilder.
-    create[Merfolk](EntityCategory.WATER_CREATURE, (t: EntityType[Merfolk], w: World) => new Merfolk(t, w)).
-    size(EntityDimensions.fixed(.625f, 1.875f)).
+    create[Merfolk](SpawnGroup.WATER_CREATURE, (t: EntityType[Merfolk], w: World) => new Merfolk(t, w)).
+    dimensions(EntityDimensions.fixed(.625f, 1.875f)).
     build()
 
   val merfolkEgg: MerfolkEgg = new MerfolkEgg(new Item.Settings().group(ItemGroup.MISC))
@@ -50,6 +51,8 @@ object TheBlueMod extends ModInitializer {
     registerItem("kelp_string", kelpStringItem)
     registerEntity("merfolk", merfolkType)
     registerItem("merfolk_egg", merfolkEgg)
+
+    DefaultAttributeRegistryAccessor.getRegistry.put(merfolkType, Merfolk.createAttributes)
   }
 
   private def registerEntity[T <: Entity](name: String, entityType: EntityType[T]): EntityType[T] =
@@ -59,7 +62,7 @@ object TheBlueMod extends ModInitializer {
     Registry.register(Registry.BLOCK_ENTITY_TYPE, new Identifier(modid, name), tileType)
 
   private def registerBlock(name: String, block: Block): Block =
-    Registry.register(Registry.BLOCK, new Identifier(modid, name), fishingNetBlock)
+    Registry.register(Registry.BLOCK, new Identifier(modid, name), block)
 
   private def registerItem(name: String, item: Item): Item =
     Registry.register(Registry.ITEM, new Identifier(modid, name), item)
